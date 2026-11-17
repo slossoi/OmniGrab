@@ -1,5 +1,5 @@
 ![Интерфейс OmniGrab](Gemini_Generated_Image_4wuzpr4wuzpr4wuz.jpg)
-
+FULLY FREE + HIGH QUALITY
 RU
 Загрузчик с YouTube, TikTok, Pinterest, SoundCloud
 Работает
@@ -20,3 +20,5 @@ Make issue if bug
 - [ ] Speed download
 - [ ] Speed launch
 - [ ] No error download
+- [ ] Extension
+- [ ] Site
