@@ -16,9 +16,9 @@ yt-dlp python
 ffmpeg  in bin/ffmpeg.exe  bin/ffprobe  .exe  bin/ffplay.exe 
 Make issue if bug
 
-- [x] Working download
-- [ ] Speed download
-- [ ] Speed launch
-- [ ] No error download
-- [ ] Extension
-- [ ] Site
+- [x] Working download/Рабочее скачаивание
+- [x] Speed download/Быстрое скачивание
+- [ ] Speed launch/Быстрый запуск
+- [x] No error download/Скачивание без ошибок
+- [ ] Extension/Расширение
+- [ ] Site/Сайт
