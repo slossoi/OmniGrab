@@ -15,3 +15,8 @@ Requiments:
 yt-dlp python
 ffmpeg  in bin/ffmpeg.exe  bin/ffprobe  .exe  bin/ffplay.exe 
 Make issue if bug
+
+- [x] Working download
+- [ ] Speed download
+- [ ] Speed launch
+- [ ] No error download
