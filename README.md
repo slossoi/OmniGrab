@@ -7,6 +7,7 @@ RU
 yt-dlp python
 ffmpeg  в bin/ffmpeg.exe  bin/ffprobe  .exe  bin/ffplay.exe 
 Сообщайте о багах в  Issues
+npm install
 
 EN
 Downloader from yutube, tik-tokk., pinterest, soundcloiud
