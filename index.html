@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniGrab</title>
+  <style>
+    :root {
+      --bg-dark: #0d0e14;
+      --bg-card: rgba(22, 23, 34, 0.85);
+      --bg-card-border: rgba(255, 204, 213, 0.14);
+      --bg-input: #151621;
+      --milk-pink: #fbb6ce;
+      --milk-pink-light: #fed7e2;
+      --milk-pink-ultra: #fff0f5;
+      --milk-pink-glow: rgba(251, 182, 206, 0.35);
+      --sc-orange: #ff5500;
+      --sc-orange-hover: #ff6e26;
+      --sc-orange-glow: rgba(255, 85, 0, 0.4);
+      --yt-red: #ff0000;
+      --yt-red-hover: #ff2a2a;
+      --yt-red-glow: rgba(255, 0, 0, 0.4);
+      --tt-purple: #7928ca;
+      --tt-purple-dark: #1f112e;
+      --tt-purple-hover: #9b45e4;
+      --tt-purple-glow: rgba(147, 51, 234, 0.45);
+      --pin-red: #e60023;
+      --pin-red-hover: #ff1a3c;
+      --pin-red-glow: rgba(230, 0, 35, 0.5);
+      --text-main: #f0f2f8;
+      --text-muted: #8d92a6;
+      --transition-fast: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      --transition-smooth: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 0%, #1c1c28 0%, var(--bg-dark) 70%);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Ambient background glows */
+    .ambient-glow {
+      position: absolute;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 550px;
+      height: 280px;
+      background: radial-gradient(ellipse, rgba(251, 182, 206, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Header */
+    header {
+      padding: 24px 32px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .brand-title {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      text-shadow: 0 0 25px var(--milk-pink-glow);
+    }
+
+    .brand-omni {
+      color: var(--milk-pink);
+    }
+
+    .brand-grab {
+      color: #ffffff;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-folder {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--bg-card-border);
+      color: var(--milk-pink-light);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition-fast);
+    }
+
+    .btn-folder:hover {
+      background: rgba(251, 182, 206, 0.12);
+      border-color: var(--milk-pink);
+      transform: translateY(-1px);
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0 32px;
+      position: relative;
+      z-index: 5;
+    }
+
+    .center-stage {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    /* Platform Tag (Slides UP from field) */
+    .platform-tag-wrapper {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      margin-bottom: 8px;
+      width: 100%;
+    }
+
+    .platform-tag {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 16px;
+      border-radius: 10px;
+      background: rgba(20, 22, 32, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      transform: translateY(60px);
+      opacity: 0;
+      transition: transform var(--transition-smooth), opacity var(--transition-smooth);
+      pointer-events: none;
+    }
+
+    .platform-tag.visible {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .platform-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .platform-icon svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Font Times New Roman, bold, white as requested */
+    .platform-name {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    /* Input Field Container */
+    .input-box-container {
+      width: 100%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: var(--bg-input);
+      border: 1.5px solid var(--bg-card-border);
+      border-radius: 16px;
+      padding: 6px 8px 6px 18px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      transition: border-color var(--transition-smooth), box-shadow var(--transition-smooth);
+    }
+
+    .input-box-container:focus-within {
+      border-color: var(--milk-pink);
+      box-shadow: 0 0 30px var(--milk-pink-glow), 0 12px 35px rgba(0, 0, 0, 0.6);
+    }
+
+    .input-box-container.soundcloud-active {
+      border-color: var(--sc-orange);
+      box-shadow: 0 0 25px var(--sc-orange-glow);
+    }
+
+    .input-box-container.youtube-active {
+      border-color: var(--yt-red);
+      box-shadow: 0 0 25px var(--yt-red-glow);
+    }
+
+    .input-box-container.tiktok-active {
+      background: var(--tt-purple-dark);
+      border-color: var(--tt-purple);
+      box-shadow: 0 0 30px var(--tt-purple-glow), 0 10px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    .input-box-container.pinterest-active {
+      border-color: var(--pin-red);
+      box-shadow: 0 0 30px var(--pin-red-glow), 0 10px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    .url-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #ffffff;
+      font-size: 15px;
+      padding: 10px 4px;
+      font-family: inherit;
+      user-select: text;
+    }
+
+    .url-input::placeholder {
+      color: #5d6175;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .url-input:focus::placeholder {
+      color: #7b8098;
+    }
+
+    .btn-clear {
+      background: transparent;
+      border: none;
+      color: #5d6175;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 4px 8px;
+      margin-right: 4px;
+      display: none;
+      transition: color 0.2s;
+    }
+
+    .btn-clear:hover {
+      color: #ffffff;
+    }
+
+    /* Download Button (Smoothly slides OUT from the field) */
+    .btn-download-wrapper {
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      width: 0;
+      opacity: 0;
+      transform: translateX(15px);
+      transition: width var(--transition-smooth), opacity var(--transition-smooth), transform var(--transition-smooth);
+    }
+
+    .btn-download-wrapper.visible {
+      width: 140px;
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .btn-download {
+      width: 100%;
+      height: 44px;
+      border-radius: 11px;
+      border: none;
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform var(--transition-fast), filter var(--transition-fast), box-shadow var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .btn-download:hover {
+      filter: brightness(1.1);
+      transform: scale(1.02);
+    }
+
+    .btn-download:active {
+      transform: scale(0.97);
+    }
+
+    .btn-download.sc {
+      background: linear-gradient(135deg, var(--sc-orange), #ff7700);
+      box-shadow: 0 4px 18px var(--sc-orange-glow);
+    }
+
+    .btn-download.yt {
+      background: linear-gradient(135deg, var(--yt-red), #e60000);
+      box-shadow: 0 4px 18px var(--yt-red-glow);
+    }
+
+    .btn-download.tt {
+      background: linear-gradient(135deg, var(--tt-purple), #9333ea);
+      box-shadow: 0 4px 18px var(--tt-purple-glow);
+    }
+
+    .btn-download.pin {
+      background: linear-gradient(135deg, var(--pin-red), #ff2b4a);
+      box-shadow: 0 4px 20px var(--pin-red-glow);
+    }
+
+    /* Curtains / Dropdowns Area below input (Slides DOWN) */
+    .curtains-container {
+      width: 100%;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-16px);
+      transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease, transform 0.35s ease;
+      margin-top: 0;
+    }
+
+    .curtains-container.visible {
+      max-height: 800px;
+      opacity: 1;
+      transform: translateY(0);
+      margin-top: 14px;
+      overflow: visible;
+    }
+
+    .curtains-row {
+      display: flex;
+      gap: 14px;
+      width: 100%;
+      align-items: flex-start;
+    }
+
+    .curtain-widget {
+      flex: 1;
+      background: rgba(22, 23, 34, 0.95);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .curtain-widget:hover {
+      border-color: rgba(251, 182, 206, 0.3);
+    }
+
+    .curtain-widget.open {
+      border-color: var(--milk-pink);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 16px var(--milk-pink-glow);
+    }
+
+    .curtain-header {
+      padding: 10px 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      transition: background var(--transition-fast);
+    }
+
+    .curtain-header:hover {
+      background: rgba(30, 31, 45, 0.95);
+    }
+
+    .curtain-title-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .curtain-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--milk-pink-light);
+      font-weight: 600;
+    }
+
+    .curtain-current-val {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .curtain-arrow {
+      width: 18px;
+      height: 18px;
+      stroke: var(--milk-pink-light);
+      stroke-width: 2;
+      fill: none;
+      transition: transform var(--transition-smooth);
+    }
+
+    .curtain-widget.open .curtain-arrow {
+      transform: rotate(180deg);
+    }
+
+    /* Accordion Dropdown Content */
+    .curtain-dropdown {
+      max-height: 0;
+      overflow-y: auto;
+      opacity: 0;
+      transition: max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, padding 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 0 8px;
+      border-top: 1px solid transparent;
+    }
+
+    .curtain-dropdown::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .curtain-dropdown::-webkit-scrollbar-thumb {
+      background: rgba(251, 182, 206, 0.25);
+      border-radius: 4px;
+    }
+
+    .curtain-widget.open .curtain-dropdown {
+      max-height: 190px;
+      opacity: 1;
+      padding: 8px 8px 10px;
+      border-top-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .curtain-option {
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #c9cddb;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.18s, color 0.18s;
+    }
+
+    .curtain-option:hover {
+      background: rgba(251, 182, 206, 0.12);
+      color: #ffffff;
+    }
+
+    .curtain-option.active {
+      background: rgba(251, 182, 206, 0.2);
+      color: var(--milk-pink-ultra);
+      font-weight: 700;
+    }
+
+    .curtain-option.active::after {
+      content: '✓';
+      color: var(--milk-pink);
+      font-size: 13px;
+    }
+
+    /* Media Preview Card */
+    .preview-card {
+      margin-top: 20px;
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 16px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity var(--transition-smooth), transform var(--transition-smooth);
+      pointer-events: none;
+    }
+
+    .preview-card.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .preview-thumb-box {
+      width: 80px;
+      height: 80px;
+      border-radius: 10px;
+      background: #111218;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: width var(--transition-smooth), height var(--transition-smooth);
+    }
+
+    /* Option Card Buttons (Glowing selectable cards) */
+    .option-cards-container {
+      width: 100%;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-16px);
+      transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease, transform 0.35s ease;
+      margin-top: 0;
+    }
+
+    .option-cards-container.visible {
+      max-height: 200px;
+      opacity: 1;
+      transform: translateY(0);
+      margin-top: 14px;
+      overflow: visible;
+    }
+
+    .option-cards-row {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .glow-card-btn {
+      flex: 1;
+      background: rgba(22, 23, 34, 0.9);
+      border: 1.5px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 13px 16px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: flex-start;
+      justify-content: center;
+      transition: all var(--transition-fast);
+      user-select: none;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .glow-card-btn:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.3);
+      background: rgba(30, 32, 48, 0.95);
+    }
+
+    .glow-card-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* TikTok Purple Glowing Buttons */
+    .glow-card-btn.tt-theme {
+      background: rgba(26, 16, 38, 0.9);
+      border-color: rgba(147, 51, 234, 0.3);
+    }
+
+    .glow-card-btn.tt-theme:hover {
+      border-color: rgba(168, 85, 247, 0.65);
+      background: rgba(36, 21, 53, 0.95);
+      box-shadow: 0 0 18px rgba(147, 51, 234, 0.35);
+    }
+
+    .glow-card-btn.tt-theme.active {
+      border-color: #c084fc;
+      background: linear-gradient(135deg, rgba(88, 28, 135, 0.55), rgba(46, 16, 73, 0.85));
+      box-shadow: 0 0 25px rgba(168, 85, 247, 0.55), 0 6px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .glow-card-btn.tt-theme .card-title {
+      color: #f3e8ff;
+    }
+
+    .glow-card-btn.tt-theme.active .card-title {
+      color: #ffffff;
+      text-shadow: 0 0 12px rgba(192, 132, 252, 0.7);
+    }
+
+    .glow-card-btn.tt-theme .card-sub {
+      color: #c084fc;
+    }
+
+    /* SoundCloud Orange Glowing Buttons */
+    .glow-card-btn.sc-theme {
+      background: rgba(36, 18, 12, 0.9);
+      border-color: rgba(255, 85, 0, 0.3);
+    }
+
+    .glow-card-btn.sc-theme:hover {
+      border-color: rgba(255, 110, 38, 0.65);
+      background: rgba(50, 24, 15, 0.95);
+      box-shadow: 0 0 18px rgba(255, 85, 0, 0.35);
+    }
+
+    .glow-card-btn.sc-theme.active {
+      border-color: #ff8533;
+      background: linear-gradient(135deg, rgba(168, 50, 0, 0.55), rgba(77, 24, 0, 0.85));
+      box-shadow: 0 0 25px rgba(255, 85, 0, 0.55), 0 6px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .glow-card-btn.sc-theme .card-title {
+      color: #ffe6db;
+    }
+
+    .glow-card-btn.sc-theme.active .card-title {
+      color: #ffffff;
+      text-shadow: 0 0 12px rgba(255, 133, 51, 0.7);
+    }
+
+    .glow-card-btn.sc-theme .card-sub {
+      color: #ff8533;
+    }
+
+    .card-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      transition: color var(--transition-fast), text-shadow var(--transition-fast);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-sub {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      transition: color var(--transition-fast);
+    }
+
+    .glow-indicator {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: transparent;
+      border: 1.5px solid currentColor;
+      margin-left: auto;
+      transition: all var(--transition-fast);
+    }
+
+    .glow-card-btn.active .glow-indicator {
+      background: #ffffff;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    /* YouTube 16:9 Cover Thumbnail */
+    .preview-thumb-box.is-yt {
+      width: 144px;
+      height: 81px;
+      aspect-ratio: 16 / 9;
+    }
+
+    /* TikTok & Pinterest Vertical Thumbnail */
+    .preview-thumb-box.is-tt,
+    .preview-thumb-box.is-pin {
+      width: 60px;
+      height: 90px;
+      aspect-ratio: 9 / 16;
+    }
+
+    /* SoundCloud 1:1 Cover Thumbnail */
+    .preview-thumb-box.is-sc {
+      width: 80px;
+      height: 80px;
+      aspect-ratio: 1 / 1;
+    }
+
+    .preview-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .preview-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .preview-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .preview-author {
+      font-size: 13px;
+      color: var(--milk-pink);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preview-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      align-self: flex-start;
+      margin-top: 2px;
+    }
+
+    .badge-sc {
+      background: rgba(255, 85, 0, 0.18);
+      color: #ff8533;
+      border: 1px solid rgba(255, 85, 0, 0.35);
+    }
+
+    .badge-yt {
+      background: rgba(255, 0, 0, 0.18);
+      color: #ff5555;
+      border: 1px solid rgba(255, 0, 0, 0.35);
+    }
+
+    .badge-tt {
+      background: rgba(147, 51, 234, 0.22);
+      color: #c084fc;
+      border: 1px solid rgba(168, 85, 247, 0.45);
+    }
+
+    .badge-pin {
+      background: rgba(230, 0, 35, 0.22);
+      color: #ff4d66;
+      border: 1px solid rgba(230, 0, 35, 0.45);
+    }
+
+    /* Bottom Download Status & Progress Area */
+    .download-dock {
+      padding: 16px 32px 24px;
+      background: rgba(12, 13, 18, 0.95);
+      border-top: 1px solid var(--bg-card-border);
+      backdrop-filter: blur(16px);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      opacity: 0;
+      transform: translateY(30px);
+      pointer-events: none;
+      transition: opacity var(--transition-smooth), transform var(--transition-smooth);
+    }
+
+    .download-dock.active {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .dock-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .dock-status-line {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 13px;
+      color: #d1d5e5;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    .dock-status-line span.highlight {
+      color: var(--milk-pink);
+      font-weight: 700;
+    }
+
+    .btn-stop {
+      background: #24161b;
+      border: 1px solid #732230;
+      color: #ff6b81;
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition-fast);
+      flex-shrink: 0;
+    }
+
+    .btn-stop:hover {
+      background: #3b1b24;
+      border-color: #ff4757;
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(255, 71, 87, 0.3);
+    }
+
+    /* Long Progress Bar with Smooth animation */
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.07);
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--milk-pink), #ff77a8);
+      border-radius: 999px;
+      box-shadow: 0 0 14px var(--milk-pink-glow);
+      /* Smooth animated progression */
+      transition: width 0.35s cubic-bezier(0.2, 0.8, 0.25, 1);
+    }
+
+    .progress-fill.sc-fill {
+      background: linear-gradient(90deg, var(--sc-orange), #ffaa00);
+      box-shadow: 0 0 14px var(--sc-orange-glow);
+    }
+
+    .progress-fill.yt-fill {
+      background: linear-gradient(90deg, var(--yt-red), #ff4d4d);
+      box-shadow: 0 0 14px var(--yt-red-glow);
+    }
+
+    .progress-fill.tt-fill {
+      background: linear-gradient(90deg, var(--tt-purple), #c084fc);
+      box-shadow: 0 0 14px var(--tt-purple-glow);
+    }
+
+    .progress-fill.pin-fill {
+      background: linear-gradient(90deg, var(--pin-red), #ff4d66);
+      box-shadow: 0 0 14px var(--pin-red-glow);
+    }
+
+    /* Logs view toggle */
+    .log-strip {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: default;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ambient-glow"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand-title">
+      <span class="brand-omni">Omni</span><span class="brand-grab">Grab</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-folder" id="btnOpenFolder" title="Открыть папку 'Загрузки'">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        Папка загрузок
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Center Area -->
+  <main>
+    <div class="center-stage">
+      
+      <!-- Platform Tag (Slides UP above the field) -->
+      <div class="platform-tag-wrapper">
+        <div class="platform-tag" id="platformTag">
+          <div class="platform-icon" id="platformIcon"></div>
+          <span class="platform-name" id="platformName">Soundcloud</span>
+        </div>
+      </div>
+
+      <!-- Center Input Field -->
+      <div class="input-box-container" id="inputContainer">
+        <input 
+          type="text" 
+          class="url-input" 
+          id="urlInput" 
+          placeholder="Вставьте ссылку на YouTube, SoundCloud, TikTok или Pinterest..." 
+          spellcheck="false"
+          autocomplete="off"
+        />
+        <button class="btn-clear" id="btnClear" title="Очистить">✕</button>
+
+        <!-- Download Button (Smoothly slides OUT from the field) -->
+        <div class="btn-download-wrapper" id="btnDownloadWrapper">
+          <button class="btn-download" id="btnDownload">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Скачать
+          </button>
+        </div>
+      </div>
+
+      <!-- YouTube Quality & Bitrate Curtains ("Шторки", Slide DOWN) -->
+      <div class="curtains-container" id="curtainsContainer">
+        <div class="curtains-row">
+          
+          <!-- Quality Curtain ("Шторка качества") -->
+          <div class="curtain-widget" id="qualityWidget">
+            <div class="curtain-header" id="qualityHeader">
+              <div class="curtain-title-block">
+                <span class="curtain-label">Качество видео</span>
+                <span class="curtain-current-val" id="qualityVal">1080p</span>
+              </div>
+              <svg class="curtain-arrow" viewBox="0 0 24 24">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            <div class="curtain-dropdown" id="qualityDropdown">
+              <!-- Populated dynamically based on actual video resolutions -->
+              <div class="curtain-option" data-value="144p">144p</div>
+              <div class="curtain-option" data-value="240p">240p</div>
+              <div class="curtain-option" data-value="360p">360p</div>
+              <div class="curtain-option" data-value="720p">720p</div>
+              <div class="curtain-option active" data-value="1080p">1080p</div>
+              <div class="curtain-option" data-value="1440p">1440p</div>
+              <div class="curtain-option" data-value="2160p">2160p</div>
+            </div>
+          </div>
+
+          <!-- Bitrate Curtain ("Шторка битрейта") -->
+          <div class="curtain-widget" id="bitrateWidget">
+            <div class="curtain-header" id="bitrateHeader">
+              <div class="curtain-title-block">
+                <span class="curtain-label">Битрейт видео</span>
+                <span class="curtain-current-val" id="bitrateVal">Стандартный</span>
+              </div>
+              <svg class="curtain-arrow" viewBox="0 0 24 24">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            <div class="curtain-dropdown" id="bitrateDropdown">
+              <div class="curtain-option active" data-value="Стандартный">Стандартный</div>
+              <div class="curtain-option" data-value="Максимальный">Максимальный</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SoundCloud Options Glowing Buttons (Slide DOWN) -->
+      <div class="option-cards-container" id="scOptionsContainer">
+        <div class="option-cards-row">
+          <div class="glow-card-btn sc-theme active" data-sc-mode="audio" id="scBtnAudio">
+            <div class="card-title">
+              Скачать саундклауд
+              <span class="glow-indicator"></span>
+            </div>
+            <div class="card-sub">MP3 320KBPS</div>
+          </div>
+          <div class="glow-card-btn sc-theme" data-sc-mode="cover" id="scBtnCover">
+            <div class="card-title">
+              Только обложка
+              <span class="glow-indicator"></span>
+            </div>
+            <div class="card-sub">1024x1024~</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TikTok Options Glowing Buttons (Slide DOWN) -->
+      <div class="option-cards-container" id="tiktokOptionsContainer">
+        <div class="option-cards-row">
+          <div class="glow-card-btn tt-theme active" data-tt-mode="no_watermark" id="ttBtnNoWm">
+            <div class="card-title">
+              Без водяного знака
+              <span class="glow-indicator"></span>
+            </div>
+            <div class="card-sub">Чистое видео MP4</div>
+          </div>
+          <div class="glow-card-btn tt-theme" data-tt-mode="watermark" id="ttBtnWm">
+            <div class="card-title">
+              С водяным знаком
+              <span class="glow-indicator"></span>
+            </div>
+            <div class="card-sub">Оригинал с логотипом</div>
+          </div>
+          <div class="glow-card-btn tt-theme" data-tt-mode="audio" id="ttBtnAudio">
+            <div class="card-title">
+              Только звук
+              <span class="glow-indicator"></span>
+            </div>
+            <div class="card-sub">MP3 320 KBPS</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview Card (Title, Thumbnail cover, Author) -->
+      <div class="preview-card" id="previewCard">
+        <div class="preview-thumb-box is-yt" id="previewThumbBox">
+          <img src="" alt="Cover" class="preview-thumb" id="previewThumb" />
+        </div>
+        <div class="preview-info">
+          <div class="preview-title" id="previewTitle">Загрузка информации...</div>
+          <div class="preview-author">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span id="previewAuthor">Автор</span>
+          </div>
+          <div class="preview-badge" id="previewBadge">YouTube</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Bottom Dock: Long Progress Bar & Stop Button -->
+  <div class="download-dock" id="downloadDock">
+    <div class="dock-top-row">
+      <div class="dock-status-line" id="dockStatusLine">
+        [download]   0.0% of ~ 0.00MiB at 0.00MiB/s ETA --:--
+      </div>
+      <button class="btn-stop" id="btnStop">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="5" y="5" width="14" height="14" rx="2"></rect>
+        </svg>
+        Стоп
+      </button>
+    </div>
+
+    <!-- Long Smooth Progress Bar -->
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div class="log-strip" id="logStrip">Подготовка к скачиванию...</div>
+  </div>
+
+  <script>
+    // SVGs for 1:1 Square Icons
+    const ICONS = {
+      soundcloud: `
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="8" fill="#FF5500"/>
+          <path d="M12 28.5V26.5M15 30.5V24.5M18 31.5V22.5M21 31.5V20.5M24 31.5V19.5" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M25 31.5H35.5C38 31.5 40 29.5 40 27C40 24.5 38 22.5 35.5 22.5C35.2 22.5 34.8 22.5 34.5 22.7C33.8 18.8 30.5 16 26.5 16C24.8 16 23.3 16.5 22 17.5V31.5H25Z" fill="white"/>
+        </svg>
+      `,
+      youtube: `
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="8" fill="#FF0000"/>
+          <path d="M38 18.5C37.6 16.5 36 15 34 14.6C31 14 24 14 24 14C24 14 17 14 14 14.6C12 15 10.4 16.5 10 18.5C9.5 21 9.5 24 9.5 24C9.5 24 9.5 27 10 29.5C10.4 31.5 12 33 14 33.4C17 34 24 34 24 34C24 34 31 34 34 33.4C36 33 37.6 31.5 38 29.5C38.5 27 38.5 24 38.5 24C38.5 24 38.5 21 38 18.5Z" fill="white"/>
+          <polygon points="21,19 29,24 21,29" fill="#FF0000"/>
+        </svg>
+      `,
+      tiktok: `
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="8" fill="#000000"/>
+          <!-- Cyan / Red offset TikTok iconic note logo -->
+          <g transform="translate(1, 0)">
+            <path d="M29.5 10C30.6 13.5 33.5 16.2 37 16.8V22C34.2 21.9 31.7 20.8 29.7 19V30.5C29.7 36 25.2 40.5 19.7 40.5C14.7 40.5 10.5 36.8 10 32C9.5 26.6 13.8 22 19.2 22C19.9 22 20.6 22.1 21.2 22.3V27.6C20.7 27.4 20.2 27.3 19.7 27.3C18 27.3 16.5 28.7 16.5 30.5C16.5 32.2 17.9 33.7 19.7 33.7C21.9 33.7 23.7 31.9 23.7 29.7V10H29.5Z" fill="#25F4EE"/>
+          </g>
+          <g transform="translate(-1, 0)">
+            <path d="M29.5 10C30.6 13.5 33.5 16.2 37 16.8V22C34.2 21.9 31.7 20.8 29.7 19V30.5C29.7 36 25.2 40.5 19.7 40.5C14.7 40.5 10.5 36.8 10 32C9.5 26.6 13.8 22 19.2 22C19.9 22 20.6 22.1 21.2 22.3V27.6C20.7 27.4 20.2 27.3 19.7 27.3C18 27.3 16.5 28.7 16.5 30.5C16.5 32.2 17.9 33.7 19.7 33.7C21.9 33.7 23.7 31.9 23.7 29.7V10H29.5Z" fill="#FE2C55" style="mix-blend-mode: screen;"/>
+          </g>
+          <path d="M29.5 10C30.6 13.5 33.5 16.2 37 16.8V22C34.2 21.9 31.7 20.8 29.7 19V30.5C29.7 36 25.2 40.5 19.7 40.5C14.7 40.5 10.5 36.8 10 32C9.5 26.6 13.8 22 19.2 22C19.9 22 20.6 22.1 21.2 22.3V27.6C20.7 27.4 20.2 27.3 19.7 27.3C18 27.3 16.5 28.7 16.5 30.5C16.5 32.2 17.9 33.7 19.7 33.7C21.9 33.7 23.7 31.9 23.7 29.7V10H29.5Z" fill="#FFFFFF"/>
+        </svg>
+      `,
+      pinterest: `
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="8" fill="#E60023"/>
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M24 10C16.268 10 10 16.268 10 24C10 29.932 13.689 34.998 18.91 37.071C18.784 35.962 18.672 34.256 18.916 33.211C19.136 32.269 20.34 27.184 20.34 27.184C20.34 27.184 19.972 26.448 19.972 25.358C19.972 23.649 20.963 22.373 22.197 22.373C23.245 22.373 23.751 23.16 23.751 24.102C23.751 25.155 23.08 26.732 22.723 28.232C22.434 29.458 23.339 30.457 24.549 30.457C26.736 30.457 28.419 28.151 28.419 24.819C28.419 21.873 26.304 19.817 23.284 19.817C19.791 19.817 17.747 22.437 17.747 25.176C17.747 26.23 18.152 27.362 18.658 27.975C18.758 28.096 18.772 28.204 18.743 28.326C18.65 28.713 18.437 29.58 18.384 29.8C18.313 30.096 18.146 30.165 17.848 30.026C15.882 29.112 14.646 26.248 14.646 23.95C14.646 19.043 18.209 14.544 24.453 14.544C29.472 14.544 33.376 18.12 33.376 22.923C33.376 27.898 30.239 31.916 25.886 31.916C24.425 31.916 23.048 31.155 22.578 30.258L21.681 33.676C21.356 34.925 20.468 36.488 19.824 37.53C21.139 37.935 22.544 38.156 24 38.156C31.819 38.156 38.156 31.819 38.156 24C38.156 16.268 31.819 10 24 10Z" fill="white"/>
+        </svg>
+      `
+    };
+
+    // State
+    let currentPlatform = null; // 'youtube' | 'soundcloud' | 'tiktok' | 'pinterest' | null
+    let selectedQuality = '1080p';
+    let selectedBitrate = 'Стандартный';
+    let selectedTikTokMode = 'no_watermark'; // 'no_watermark' | 'watermark' | 'audio'
+    let selectedSoundCloudMode = 'audio'; // 'audio' | 'cover'
+    let isDownloading = false;
+    let infoFetchTimeout = null;
+
+    // DOM Elements
+    const urlInput = document.getElementById('urlInput');
+    const btnClear = document.getElementById('btnClear');
+    const inputContainer = document.getElementById('inputContainer');
+    const platformTag = document.getElementById('platformTag');
+    const platformIcon = document.getElementById('platformIcon');
+    const platformName = document.getElementById('platformName');
+    const btnDownloadWrapper = document.getElementById('btnDownloadWrapper');
+    const btnDownload = document.getElementById('btnDownload');
+    const curtainsContainer = document.getElementById('curtainsContainer');
+    const scOptionsContainer = document.getElementById('scOptionsContainer');
+    const tiktokOptionsContainer = document.getElementById('tiktokOptionsContainer');
+    const qualityWidget = document.getElementById('qualityWidget');
+    const qualityHeader = document.getElementById('qualityHeader');
+    const qualityVal = document.getElementById('qualityVal');
+    const qualityDropdown = document.getElementById('qualityDropdown');
+    const bitrateWidget = document.getElementById('bitrateWidget');
+    const bitrateHeader = document.getElementById('bitrateHeader');
+    const bitrateVal = document.getElementById('bitrateVal');
+    const bitrateDropdown = document.getElementById('bitrateDropdown');
+    const previewCard = document.getElementById('previewCard');
+    const previewThumbBox = document.getElementById('previewThumbBox');
+    const previewThumb = document.getElementById('previewThumb');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewAuthor = document.getElementById('previewAuthor');
+    const previewBadge = document.getElementById('previewBadge');
+    const downloadDock = document.getElementById('downloadDock');
+    const dockStatusLine = document.getElementById('dockStatusLine');
+    const progressFill = document.getElementById('progressFill');
+    const btnStop = document.getElementById('btnStop');
+    const logStrip = document.getElementById('logStrip');
+    const btnOpenFolder = document.getElementById('btnOpenFolder');
+
+    // Detect URL Type
+    function detectPlatform(url) {
+      if (!url) return null;
+      const clean = url.trim();
+      const ytRegex = /(?:youtube\.com\/(?:watch|shorts|embed)|youtu\.be\/)/i;
+      const scRegex = /soundcloud\.com\/[a-zA-Z0-9_-]+/i;
+      const ttRegex = /(?:tiktok\.com\/|douyin\.com\/)/i;
+      const pinRegex = /(?:pinterest\.[a-z.]+\/pin\/|pin\.it\/)/i;
+
+      if (ytRegex.test(clean)) return 'youtube';
+      if (scRegex.test(clean)) return 'soundcloud';
+      if (ttRegex.test(clean)) return 'tiktok';
+      if (pinRegex.test(clean)) return 'pinterest';
+      return null;
+    }
+
+    // Input change handler
+    function handleInputChange() {
+      const val = urlInput.value.trim();
+      btnClear.style.display = val ? 'block' : 'none';
+
+      const platform = detectPlatform(val);
+      if (platform !== currentPlatform) {
+        updatePlatformUI(platform);
+      }
+
+      if (platform && val) {
+        // Debounce info fetching
+        if (infoFetchTimeout) clearTimeout(infoFetchTimeout);
+        infoFetchTimeout = setTimeout(() => {
+          showLoadingPreview(platform);
+          window.api.fetchInfo(val);
+        }, 500);
+      } else if (!platform) {
+        hidePreview();
+      }
+    }
+
+    urlInput.addEventListener('input', handleInputChange);
+    urlInput.addEventListener('paste', () => setTimeout(handleInputChange, 20));
+
+    btnClear.addEventListener('click', () => {
+      urlInput.value = '';
+      handleInputChange();
+      urlInput.focus();
+    });
+
+    // Update Platform UI
+    function updatePlatformUI(platform) {
+      currentPlatform = platform;
+      inputContainer.classList.remove('soundcloud-active', 'youtube-active', 'tiktok-active', 'pinterest-active');
+      btnDownload.classList.remove('sc', 'yt', 'tt', 'pin');
+      progressFill.classList.remove('sc-fill', 'yt-fill', 'tt-fill', 'pin-fill');
+
+      if (platform === 'soundcloud') {
+        // Tag slides UP
+        platformTag.classList.add('visible');
+        platformIcon.innerHTML = ICONS.soundcloud;
+        platformName.textContent = 'SoundCloud';
+
+        // Border & Button
+        inputContainer.classList.add('soundcloud-active');
+        btnDownloadWrapper.classList.add('visible');
+        btnDownload.classList.add('sc');
+        progressFill.classList.add('sc-fill');
+
+        // Show SoundCloud glowing buttons, hide others
+        scOptionsContainer.classList.add('visible');
+        curtainsContainer.classList.remove('visible');
+        closeCurtains();
+        tiktokOptionsContainer.classList.remove('visible');
+      } 
+      else if (platform === 'youtube') {
+        // Tag slides UP
+        platformTag.classList.add('visible');
+        platformIcon.innerHTML = ICONS.youtube;
+        platformName.textContent = 'YouTube';
+
+        // Border & Button
+        inputContainer.classList.add('youtube-active');
+        btnDownloadWrapper.classList.add('visible');
+        btnDownload.classList.add('yt');
+        progressFill.classList.add('yt-fill');
+
+        // YouTube curtains slide DOWN, hide other options
+        curtainsContainer.classList.add('visible');
+        scOptionsContainer.classList.remove('visible');
+        tiktokOptionsContainer.classList.remove('visible');
+      } 
+      else if (platform === 'tiktok') {
+        // Tag slides UP
+        platformTag.classList.add('visible');
+        platformIcon.innerHTML = ICONS.tiktok;
+        platformName.textContent = 'TikTok';
+
+        // Border & Button
+        inputContainer.classList.add('tiktok-active');
+        btnDownloadWrapper.classList.add('visible');
+        btnDownload.classList.add('tt');
+        progressFill.classList.add('tt-fill');
+
+        // Show TikTok glowing buttons, hide others
+        curtainsContainer.classList.remove('visible');
+        closeCurtains();
+        scOptionsContainer.classList.remove('visible');
+        tiktokOptionsContainer.classList.add('visible');
+      }
+      else if (platform === 'pinterest') {
+        // Tag slides UP
+        platformTag.classList.add('visible');
+        platformIcon.innerHTML = ICONS.pinterest;
+        platformName.textContent = 'Pinterest';
+
+        // Red border, red glowing input & download button only
+        inputContainer.classList.add('pinterest-active');
+        btnDownloadWrapper.classList.add('visible');
+        btnDownload.classList.add('pin');
+        progressFill.classList.add('pin-fill');
+
+        // Hide all option curtains (Pinterest only has the download button)
+        curtainsContainer.classList.remove('visible');
+        closeCurtains();
+        scOptionsContainer.classList.remove('visible');
+        tiktokOptionsContainer.classList.remove('visible');
+      }
+      else {
+        // Reset everything smoothly
+        platformTag.classList.remove('visible');
+        btnDownloadWrapper.classList.remove('visible');
+        curtainsContainer.classList.remove('visible');
+        scOptionsContainer.classList.remove('visible');
+        tiktokOptionsContainer.classList.remove('visible');
+        closeCurtains();
+        hidePreview();
+      }
+    }
+
+    // Curtains dropdown interactions
+    qualityHeader.addEventListener('click', (e) => {
+      e.stopPropagation();
+      bitrateWidget.classList.remove('open');
+      qualityWidget.classList.toggle('open');
+    });
+
+    bitrateHeader.addEventListener('click', (e) => {
+      e.stopPropagation();
+      qualityWidget.classList.remove('open');
+      bitrateWidget.classList.toggle('open');
+    });
+
+    document.addEventListener('click', () => {
+      closeCurtains();
+    });
+
+    function closeCurtains() {
+      qualityWidget.classList.remove('open');
+      bitrateWidget.classList.remove('open');
+    }
+
+    // Bitrate selection
+    bitrateDropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const opt = e.target.closest('.curtain-option');
+      if (!opt) return;
+      bitrateDropdown.querySelectorAll('.curtain-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      selectedBitrate = opt.dataset.value;
+      bitrateVal.textContent = selectedBitrate;
+      closeCurtains();
+    });
+
+    // Quality selection
+    qualityDropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const opt = e.target.closest('.curtain-option');
+      if (!opt) return;
+      qualityDropdown.querySelectorAll('.curtain-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      selectedQuality = opt.dataset.value;
+      qualityVal.textContent = selectedQuality;
+      closeCurtains();
+    });
+
+    // SoundCloud Mode Selection (Glowing buttons - Select one)
+    document.querySelectorAll('#scOptionsContainer .glow-card-btn').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('#scOptionsContainer .glow-card-btn').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        selectedSoundCloudMode = card.dataset.scMode; // 'audio' | 'cover'
+      });
+    });
+
+    // TikTok Mode Selection (Glowing buttons - Select one)
+    document.querySelectorAll('#tiktokOptionsContainer .glow-card-btn').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('#tiktokOptionsContainer .glow-card-btn').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        selectedTikTokMode = card.dataset.ttMode; // 'no_watermark' | 'watermark' | 'audio'
+      });
+    });
+
+    // Populate Quality Dropdown with actual available video resolutions
+    function updateQualityDropdown(qualities) {
+      if (!qualities || qualities.length === 0) return;
+
+      qualityDropdown.innerHTML = '';
+      qualities.forEach(q => {
+        const div = document.createElement('div');
+        div.className = 'curtain-option' + (q === selectedQuality ? ' active' : '');
+        div.dataset.value = q;
+        div.textContent = q;
+        qualityDropdown.appendChild(div);
+      });
+
+      // If previous selection isn't available, pick the best/highest one
+      if (!qualities.includes(selectedQuality)) {
+        selectedQuality = qualities[qualities.length - 1]; // usually highest
+        qualityVal.textContent = selectedQuality;
+        const lastEl = qualityDropdown.lastElementChild;
+        if (lastEl) lastEl.classList.add('active');
+      }
+    }
+
+    // Media Preview Handling
+    function showLoadingPreview(platform) {
+      previewCard.classList.add('visible');
+      const isYt = platform === 'youtube';
+      const isTt = platform === 'tiktok';
+      const isPin = platform === 'pinterest';
+      previewThumbBox.className = 'preview-thumb-box ' + (isYt ? 'is-yt' : ((isTt || isPin) ? 'is-pin' : 'is-sc'));
+      const w = isYt ? 144 : ((isTt || isPin) ? 60 : 80);
+      const h = isYt ? 81 : ((isTt || isPin) ? 90 : 80);
+      previewThumb.src = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" fill="%231a1b24"/>`;
+      previewTitle.textContent = isYt ? 'Получение информации о видео...' : (isTt ? 'Получение информации о TikTok...' : (isPin ? 'Получение пина Pinterest...' : 'Получение метаданных трека...'));
+      previewAuthor.textContent = 'Определяем автора...';
+      const badgeNames = { youtube: 'YouTube', soundcloud: 'SoundCloud', tiktok: 'TikTok', pinterest: 'Pinterest' };
+      const badgeClasses = { youtube: 'badge-yt', soundcloud: 'badge-sc', tiktok: 'badge-tt', pinterest: 'badge-pin' };
+      previewBadge.textContent = badgeNames[platform] || 'Медиа';
+      previewBadge.className = 'preview-badge ' + (badgeClasses[platform] || 'badge-yt');
+    }
+
+    function hidePreview() {
+      previewCard.classList.remove('visible');
+    }
+
+    // Handle Info Result from backend
+    window.api.onInfoResult((data) => {
+      if (!data || !data.success) {
+        if (currentPlatform) {
+          previewTitle.textContent = 'Не удалось загрузить предпросмотр';
+          previewAuthor.textContent = 'Проверьте доступность ссылки';
+        }
+        return;
+      }
+
+      const isYt = data.platform === 'youtube';
+      const isTt = data.platform === 'tiktok';
+      const isPin = data.platform === 'pinterest';
+      previewThumbBox.className = 'preview-thumb-box ' + (isYt ? 'is-yt' : ((isTt || isPin) ? 'is-pin' : 'is-sc'));
+      previewCard.classList.add('visible');
+      previewTitle.textContent = data.title || 'Без названия';
+      previewAuthor.textContent = data.author || 'Неизвестный автор';
+      const badgeNames = { youtube: 'YouTube', soundcloud: 'SoundCloud', tiktok: 'TikTok', pinterest: 'Pinterest' };
+      const badgeClasses = { youtube: 'badge-yt', soundcloud: 'badge-sc', tiktok: 'badge-tt', pinterest: 'badge-pin' };
+      previewBadge.textContent = badgeNames[data.platform] || 'Медиа';
+      previewBadge.className = 'preview-badge ' + (badgeClasses[data.platform] || 'badge-yt');
+      if (data.thumbnail) {
+        previewThumb.src = data.thumbnail;
+      }
+
+      if (isYt && data.qualities && data.qualities.length > 0) {
+        updateQualityDropdown(data.qualities);
+      }
+    });
+
+    // Start Download
+    btnDownload.addEventListener('click', () => {
+      const url = urlInput.value.trim();
+      if (!url) return;
+
+      isDownloading = true;
+      downloadDock.classList.add('active');
+      progressFill.style.width = '0%';
+      dockStatusLine.innerHTML = `[download]   0.0% of ~ 0.00MiB at 0.00MiB/s ETA --:--`;
+      logStrip.textContent = 'Инициализация загрузки...';
+      btnDownload.disabled = true;
+
+      window.api.startDownload({
+        url: url,
+        quality: selectedQuality,
+        bitrate: selectedBitrate,
+        tiktokMode: selectedTikTokMode,
+        soundcloudMode: selectedSoundCloudMode
+      });
+    });
+
+    // Stop Download
+    btnStop.addEventListener('click', () => {
+      window.api.stopDownload();
+    });
+
+    // Real-time Progress (Smooth Fill)
+    window.api.onProgress((percent) => {
+      if (percent < 0) percent = 0;
+      if (percent > 100) percent = 100;
+      // Smooth animated width transition handled by CSS
+      progressFill.style.width = `${percent}%`;
+    });
+
+    // Live Logs & Status Line parsing
+    window.api.onLog((line) => {
+      logStrip.textContent = line;
+
+      // Check if it's the download status line matching user requested format:
+      // [download]  96.2% of ~   5.01MiB at    1.13MiB/s ETA 00:01 (frag 26/26)
+      if (line.includes('[download]')) {
+        dockStatusLine.innerHTML = line.replace(/(\d+(?:\.\d+)?%)/, '<span class="highlight">$1</span>');
+      } else if (line.startsWith('[Обработка]')) {
+        dockStatusLine.innerHTML = `<span class="highlight">${line}</span>`;
+      } else if (line.startsWith('[Теги]') || line.startsWith('[Метаданные]')) {
+        dockStatusLine.innerHTML = line;
+      } else if (line.includes('[УСПЕХ]')) {
+        dockStatusLine.innerHTML = `<span class="highlight" style="color: #38ef7d;">${line}</span>`;
+      } else if (line.includes('✔')) {
+        dockStatusLine.innerHTML = `<span class="highlight" style="color: #38ef7d;">${line}</span>`;
+      }
+    });
+
+    // Download Status Complete/Stopped/Failed
+    window.api.onStatus((status) => {
+      if (!status.inProgress) {
+        isDownloading = false;
+        btnDownload.disabled = false;
+
+        if (status.stopped) {
+          dockStatusLine.innerHTML = `<span style="color: #ff6b81; font-weight: bold;">⏹ Загрузка остановлена</span>`;
+          logStrip.textContent = 'Процесс прерван пользователем.';
+        } else if (status.code === 0) {
+          progressFill.style.width = '100%';
+          dockStatusLine.innerHTML = `<span style="color: #38ef7d; font-weight: bold;">✔ Загрузка успешно завершена! Файл сохранен в Загрузки</span>`;
+        } else {
+          dockStatusLine.innerHTML = `<span style="color: #ff6b81; font-weight: bold;">✖ Ошибка загрузки (код ${status.code})</span>`;
+        }
+      }
+    });
+
+    // Open Downloads Folder
+    btnOpenFolder.addEventListener('click', () => {
+      window.api.openDownloadsFolder();
+    });
+  </script>
+</body>
+</html>
