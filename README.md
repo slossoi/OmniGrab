@@ -1,6 +1,6 @@
 ![Интерфейс OmniGrab](Gemini_Generated_Image_4wuzpr4wuzpr4wuz.jpg)
 # FULLY FREE + HIGH QUALITY
-RU
+## RU
 
 Загрузчик с YouTube, TikTok, Pinterest, SoundCloud
 
@@ -16,7 +16,7 @@ ffmpeg  в bin/ffmpeg.exe  bin/ffprobe  .exe  bin/ffplay.exe
 
 npm install
 
-EN
+## EN
 
 Downloader from yutube, tik-tokk., pinterest, soundcloiud
 
