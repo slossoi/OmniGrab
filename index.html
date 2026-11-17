@@ -1177,9 +1177,45 @@
       return null;
     }
 
+    // Clean and sanitize YouTube playlist URL to single video URL
+    function sanitizeUrl(rawUrl) {
+      if (!rawUrl) return '';
+      let url = rawUrl.trim();
+      try {
+        // If it's a YouTube watch URL with a playlist parameter (&list=...)
+        if (/(?:youtube\.com\/watch|youtu\.be\/)/i.test(url)) {
+          const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+          if (parsed.hostname.includes('youtube.com') && parsed.pathname.includes('/watch')) {
+            const v = parsed.searchParams.get('v');
+            if (v) {
+              return `https://www.youtube.com/watch?v=${v}`;
+            }
+          } else if (parsed.hostname === 'youtu.be') {
+            const v = parsed.pathname.replace(/^\//, '');
+            if (v) {
+              return `https://youtu.be/${v}`;
+            }
+          }
+        }
+      } catch (e) {
+        // Fallback regex cleaning if URL constructor fails
+        const ytMatch = url.match(/(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[a-zA-Z0-9_-]+)/i);
+        if (ytMatch) {
+          return ytMatch[1];
+        }
+      }
+      return url;
+    }
+
     // Input change handler
     function handleInputChange() {
-      const val = urlInput.value.trim();
+      let rawVal = urlInput.value.trim();
+      const sanitized = sanitizeUrl(rawVal);
+      if (sanitized && sanitized !== rawVal) {
+        urlInput.value = sanitized;
+        rawVal = sanitized;
+      }
+      const val = rawVal;
       btnClear.style.display = val ? 'block' : 'none';
 
       const platform = detectPlatform(val);
@@ -1443,6 +1479,7 @@
 
       isDownloading = true;
       downloadDock.classList.add('active');
+      btnStop.style.display = 'flex';
       progressFill.style.width = '0%';
       dockStatusLine.innerHTML = `[download]   0.0% of ~ 0.00MiB at 0.00MiB/s ETA --:--`;
       logStrip.textContent = 'Инициализация загрузки...';
@@ -1494,6 +1531,8 @@
       if (!status.inProgress) {
         isDownloading = false;
         btnDownload.disabled = false;
+        // Hide Stop button once download is completed or failed
+        btnStop.style.display = 'none';
 
         if (status.stopped) {
           dockStatusLine.innerHTML = `<span style="color: #ff6b81; font-weight: bold;">⏹ Загрузка остановлена</span>`;

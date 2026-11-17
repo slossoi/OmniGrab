@@ -15,22 +15,47 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace', line_buffering=True)
 
-# Locate local bin/ directory with bundled ffmpeg, ffprobe, ffplay
+# Locate local bin/ directory with bundled ffmpeg, ffprobe, ffplay, or fallback to PATH
+import shutil
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-BUNDLED_BIN_DIR = os.path.join(SCRIPT_DIR, 'bin')
-if not os.path.exists(BUNDLED_BIN_DIR):
-    # Try one level up if packaged inside resources/app
-    parent_bin = os.path.join(os.path.dirname(SCRIPT_DIR), 'bin')
-    if os.path.exists(parent_bin):
-        BUNDLED_BIN_DIR = parent_bin
+# Check possible bin locations: beside script, beside executable, or parent resources
+candidate_bins = [
+    os.path.join(SCRIPT_DIR, 'bin'),
+    os.path.join(os.path.dirname(SCRIPT_DIR), 'bin'),
+    os.path.join(os.getcwd(), 'bin'),
+    os.path.join(os.path.dirname(sys.executable), 'bin') if getattr(sys, 'frozen', False) else None
+]
 
-# Prepend local bin directory to PATH so local ffmpeg is strictly preferred over system PATH
-if os.path.exists(BUNDLED_BIN_DIR):
+BUNDLED_BIN_DIR = None
+for cand in candidate_bins:
+    if cand and os.path.isdir(cand) and os.path.exists(os.path.join(cand, 'ffmpeg.exe' if os.name == 'nt' else 'ffmpeg')):
+        BUNDLED_BIN_DIR = cand
+        break
+
+if BUNDLED_BIN_DIR:
+    # Local bin directory found: strictly prefer it over system PATH
     os.environ['PATH'] = BUNDLED_BIN_DIR + os.pathsep + os.environ.get('PATH', '')
+    FFMPEG_EXE = os.path.join(BUNDLED_BIN_DIR, 'ffmpeg.exe' if os.name == 'nt' else 'ffmpeg')
+else:
+    # Fallback to system PATH
+    system_ffmpeg = shutil.which('ffmpeg')
+    if system_ffmpeg:
+        FFMPEG_EXE = system_ffmpeg
+        BUNDLED_BIN_DIR = os.path.dirname(system_ffmpeg)
+    else:
+        FFMPEG_EXE = None
+        BUNDLED_BIN_DIR = None
 
-FFMPEG_EXE = os.path.join(BUNDLED_BIN_DIR, 'ffmpeg.exe') if os.name == 'nt' else os.path.join(BUNDLED_BIN_DIR, 'ffmpeg')
-if not os.path.exists(FFMPEG_EXE):
-    FFMPEG_EXE = 'ffmpeg'
+def check_ffmpeg_available():
+    """Ensure ffmpeg is available either in local bin or system PATH"""
+    if not FFMPEG_EXE or not shutil.which(FFMPEG_EXE):
+        err = "[КРИТИЧЕСКАЯ ОШИБКА] FFmpeg не найден ни в локальной папке bin, ни в системном PATH! Установите FFmpeg или поместите ffmpeg.exe в папку bin."
+        print(err, flush=True)
+        sys.stderr.write(err + "\n")
+        sys.stderr.flush()
+        return False
+    return True
 
 import yt_dlp
 import yt_dlp.extractor.soundcloud
@@ -207,8 +232,30 @@ def search_alternative_soundcloud_stream(orig_url, orig_title, orig_artist):
             
     return None
 
+def sanitize_media_url(raw_url):
+    """If YouTube watch url contains &list= or other playlist parameters, strip them down to single video"""
+    if not raw_url:
+        return raw_url
+    url = raw_url.strip()
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if 'youtube.com' in parsed.netloc and parsed.path == '/watch':
+            qs = urllib.parse.parse_qs(parsed.query)
+            video_id = qs.get('v')
+            if video_id:
+                return f"https://www.youtube.com/watch?v={video_id[0]}"
+        elif 'youtu.be' in parsed.netloc:
+            video_id = parsed.path.lstrip('/')
+            if video_id:
+                return f"https://youtu.be/{video_id}"
+    except Exception:
+        pass
+    return url
+
 def fetch_info(url):
+    url = sanitize_media_url(url)
     ydl_opts = {
+        'noplaylist': True,
         'quiet': True,
         'no_warnings': True,
         'skip_download': True,
@@ -217,8 +264,9 @@ def fetch_info(url):
     clean_url = url.lower()
     platform = 'youtube' if ('youtube.com' in clean_url or 'youtu.be' in clean_url) else ('soundcloud' if 'soundcloud.com' in clean_url else ('tiktok' if ('tiktok.com' in clean_url or 'douyin.com' in clean_url) else ('pinterest' if ('pinterest.' in clean_url or 'pin.it' in clean_url) else 'unknown')))
 
+    clean_opts = {k: v for k, v in ydl_opts.items() if v is not None}
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(clean_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             title = info.get('title') or 'Без названия'
             author = info.get('uploader') or info.get('channel') or info.get('artist') or 'Неизвестный автор'
@@ -473,6 +521,8 @@ def download_hls_to_file(m3u8_url, target_path):
     return True
 
 def transcode_to_320k_mp3(input_path, output_mp3_path):
+    if not check_ffmpeg_available():
+        raise RuntimeError("FFmpeg не найден ни в bin, ни в системе PATH.")
     print("__PROGRESS__:100.00", flush=True)
     log_msg("[Обработка] Загрузка потоков завершена, объединение и кодирование звука 320 kbps...")
     cmd = [
@@ -564,8 +614,9 @@ def download_soundcloud(url, mode="audio"):
     
     info = None
     ydl_opts = {'quiet': True, 'no_warnings': True}
+    clean_opts = {k: v for k, v in ydl_opts.items() if v is not None}
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(clean_opts) as ydl:
             log_msg("[Инфо] Получение метаданных SoundCloud...")
             info = ydl.extract_info(url, download=False)
     except Exception as e:
@@ -766,8 +817,9 @@ def download_tiktok(url, mode="no_watermark"):
             'no_warnings': False,
         }
 
+    clean_opts = {k: v for k, v in ydl_opts.items() if v is not None}
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(clean_opts) as ydl:
             log_msg(f"[Инфо] Начало загрузки TikTok ({mode_name})...")
             info = ydl.extract_info(url, download=True)
             title = info.get('title') or 'TikTok Video'
@@ -840,8 +892,9 @@ def download_pinterest(url):
         'no_warnings': False,
     }
 
+    clean_opts = {k: v for k, v in ydl_opts.items() if v is not None}
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(clean_opts) as ydl:
             log_msg(f"[Инфо] Загрузка видео с Pinterest...")
             info = ydl.extract_info(url, download=True)
             title = info.get('title') or 'Pinterest Media'
@@ -893,6 +946,7 @@ def parse_height(quality_str):
     return 1080
 
 def download_youtube(url, quality="1080p", bitrate_mode="Стандартный"):
+    url = sanitize_media_url(url)
     downloads_path = get_downloads_dir()
     max_h = parse_height(quality)
     log_msg(f"[Инфо] Папка для загрузки: {downloads_path}")
@@ -908,6 +962,7 @@ def download_youtube(url, quality="1080p", bitrate_mode="Стандартный"
     out_tmpl = os.path.join(downloads_path, '%(title)s.%(ext)s')
 
     ydl_opts = {
+        'noplaylist': True,
         'ffmpeg_location': BUNDLED_BIN_DIR,
         'format': format_selector,
         'format_sort': format_sort,
@@ -937,8 +992,9 @@ def download_youtube(url, quality="1080p", bitrate_mode="Стандартный"
         'no_warnings': False,
     }
 
+    clean_opts = {k: v for k, v in ydl_opts.items() if v is not None}
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(clean_opts) as ydl:
             log_msg(f"[Инфо] Начало загрузки видео ({quality}, {bitrate_mode} битрейт, 320 kbps звук)...")
             info = ydl.extract_info(url, download=True)
             title = info.get('title') or 'Видео'
@@ -990,6 +1046,8 @@ def main():
     elif args.command == "download":
         url = args.url.strip()
         clean_url = url.lower()
+        if not check_ffmpeg_available():
+            sys.exit(1)
         if 'soundcloud.com' in clean_url:
             success = download_soundcloud(url, mode=args.soundcloud_mode)
         elif 'tiktok.com' in clean_url or 'douyin.com' in clean_url:

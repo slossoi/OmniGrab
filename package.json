@@ -37,23 +37,12 @@
       {
         "from": "downloader.py",
         "to": "downloader.py"
-      },
-      {
-        "from": "bin",
-        "to": "bin"
       }
     ],
     "win": {
       "target": [
-        "nsis",
         "portable"
       ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
     }
   }
 }

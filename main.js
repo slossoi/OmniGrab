@@ -1,12 +1,28 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Notification } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const os = require('os');
+const fs = require('fs');
+
+if (process.platform === 'win32') {
+  app.setAppUserModelId('OmniGrab');
+}
 
 let mainWindow;
 let currentDownloadProcess = null;
 let currentInfoProcess = null;
 let wasDownloadStopped = false;
+let currentDownloadTitle = '';
+
+function showSystemNotification(title, body) {
+  if (Notification.isSupported()) {
+    new Notification({
+      title: title || 'OmniGrab',
+      body: body || '',
+      silent: false
+    }).show();
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -58,13 +74,27 @@ function getAppPaths() {
   const baseDir = isPackaged ? process.resourcesPath : __dirname;
   
   let scriptPath = path.join(baseDir, 'downloader.py');
-  if (!require('fs').existsSync(scriptPath)) {
+  if (!fs.existsSync(scriptPath)) {
     scriptPath = path.join(__dirname, 'downloader.py');
   }
 
-  let binDir = path.join(baseDir, 'bin');
-  if (!require('fs').existsSync(binDir)) {
-    binDir = path.join(__dirname, 'bin');
+  // Priority check for bin directory:
+  // 1. Beside executable (e.g. app_dir/bin)
+  // 2. In baseDir (resources/bin)
+  // 3. Beside __dirname (in dev mode)
+  const exeDir = path.dirname(process.execPath);
+  const possibleBins = [
+    path.join(exeDir, 'bin'),
+    path.join(baseDir, 'bin'),
+    path.join(__dirname, 'bin')
+  ];
+
+  let binDir = null;
+  for (const b of possibleBins) {
+    if (fs.existsSync(b) && (fs.existsSync(path.join(b, 'ffmpeg.exe')) || fs.existsSync(path.join(b, 'ffmpeg')))) {
+      binDir = b;
+      break;
+    }
   }
 
   return { isPackaged, baseDir, scriptPath, binDir };
@@ -78,7 +108,7 @@ ipcMain.on('fetch-info', (event, url) => {
   }
 
   const { scriptPath, binDir, baseDir } = getAppPaths();
-  const envPath = binDir + path.delimiter + (process.env.PATH || '');
+  const envPath = binDir ? (binDir + path.delimiter + (process.env.PATH || '')) : (process.env.PATH || '');
 
   currentInfoProcess = spawn('python', ['-u', scriptPath, 'info', url.trim()], {
     cwd: baseDir,
@@ -136,11 +166,12 @@ ipcMain.on('start-download', (event, { url, quality, bitrate, tiktokMode, soundc
   }
 
   wasDownloadStopped = false;
+  currentDownloadTitle = '';
   event.sender.send('download-status', { inProgress: true });
   event.sender.send('download-log', `[Запуск] Начинаем скачивание: ${url.trim()}`);
 
   const { scriptPath, binDir, baseDir } = getAppPaths();
-  const envPath = binDir + path.delimiter + (process.env.PATH || '');
+  const envPath = binDir ? (binDir + path.delimiter + (process.env.PATH || '')) : (process.env.PATH || '');
 
   const args = ['-u', scriptPath, 'download', url.trim()];
 
@@ -189,7 +220,6 @@ ipcMain.on('start-download', (event, { url, quality, bitrate, tiktokMode, soundc
   });
 
   currentDownloadProcess.on('close', (code) => {
-    const procRef = currentDownloadProcess;
     currentDownloadProcess = null;
     const stopped = wasDownloadStopped;
 
@@ -199,8 +229,10 @@ ipcMain.on('start-download', (event, { url, quality, bitrate, tiktokMode, soundc
       event.sender.send('download-log', '⏹ Загрузка остановлена пользователем.');
     } else if (code === 0) {
       event.sender.send('download-log', '✔ Загрузка успешно завершена!');
+      showSystemNotification('OmniGrab', 'Загрузка успешно завершена!');
     } else {
       event.sender.send('download-log', `✖ Загрузка прервана с кодом: ${code}`);
+      showSystemNotification('OmniGrab', `Ошибка загрузки (код ошибки: ${code})`);
     }
   });
 
@@ -208,6 +240,7 @@ ipcMain.on('start-download', (event, { url, quality, bitrate, tiktokMode, soundc
     currentDownloadProcess = null;
     event.sender.send('download-status', { inProgress: false, code: 1, stopped: false });
     event.sender.send('download-log', `[Системная ошибка] Не удалось запустить downloader: ${err.message}`);
+    showSystemNotification('OmniGrab', `Ошибка: ${err.message}`);
   });
 });
 
